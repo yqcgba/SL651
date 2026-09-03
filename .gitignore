@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 构建产物
+dist/
+build/
+*.spec
+
+# 运行日志
+out.txt
+stdout.txt
+stderr.txt
+*.log

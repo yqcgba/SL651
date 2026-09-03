@@ -1,0 +1,41 @@
+{
+  "targets": [
+    {
+      "enabled": true,
+      "transport": "tcp",
+      "target": "127.0.0.6",
+      "port": 5001
+    },
+    {
+      "enabled": false,
+      "transport": "tcp",
+      "target": "",
+      "port": 5001
+    },
+    {
+      "enabled": false,
+      "transport": "tcp",
+      "target": "",
+      "port": 5001
+    },
+    {
+      "enabled": false,
+      "transport": "tcp",
+      "target": "",
+      "port": 5001
+    }
+  ],
+  "stations": [
+    {
+      "enabled": true,
+      "addr": "001255555525"
+    }
+  ],
+  "center_addr": 1,
+  "password": "0x1234",
+  "station_type": "河道",
+  "serial_no": 1,
+  "voltage": 12.5,
+  "count": 1,
+  "elements": []
+}

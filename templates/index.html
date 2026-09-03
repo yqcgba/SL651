@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水文监测数据 模拟上传工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background: #eef2f7;
+            color: #2c3e50;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            --font-xs: clamp(8px, 0.75vw, 10px);
+            --font-sm: clamp(9px, 0.85vw, 11px);
+            --font-md: clamp(10px, 0.95vw, 12px);
+            --font-lg: clamp(11px, 1.05vw, 14px);
+            --font-xl: clamp(13px, 1.2vw, 18px);
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        .header {
+            height: clamp(34px, 5vh, 44px);
+            background: linear-gradient(135deg, #e3edf7, #cfe0f0);
+            border-bottom: 1px solid #c2d3e4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 clamp(8px, 1vw, 18px);
+            flex-shrink: 0;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-logo {
+            font-size: var(--font-xl);
+            color: #1565c0;
+            font-weight: 700;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+        .header-badge {
+            background: #1976d2;
+            color: #fff;
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: var(--font-xs);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: var(--font-sm);
+            color: #6b7f93;
+            white-space: nowrap;
+        }
+        .header-right strong {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        /* ===== 主布局 ===== */
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: clamp(4px, 0.5vw, 8px);
+            padding: clamp(4px, 0.5vw, 8px) clamp(6px, 0.8vw, 14px);
+            height: calc(100vh - clamp(34px, 5vh, 44px));
+        }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: #ffffff;
+            border: 1px solid #d8e0ea;
+            border-radius: 6px;
+            padding: clamp(5px, 0.7vw, 10px) clamp(6px, 0.8vw, 12px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(30, 60, 90, 0.06);
+        }
+        .card-title {
+            font-size: var(--font-md);
+            font-weight: 600;
+            color: #1565c0;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #e3eaf2;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .card-title .icon { font-size: var(--font-lg); }
+        .card-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .card-body::-webkit-scrollbar { width: 5px; }
+        .card-body::-webkit-scrollbar-track { background: #f1f5f9; }
+        .card-body::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 3px; }
+        .card-nopad { padding: 0; }
+
+        /* ===== 网格定位 ===== */
+        /* Row 1: 连接(1列) | 测站(2-3列,更宽) | 时间+操作(4列) */
+        .r1c1 { grid-column: 1; grid-row: 1; }
+        .r1c2 { grid-column: 2 / 4; grid-row: 1; }
+        .r1c4 { grid-column: 4; grid-row: 1; }
+
+        /* Row 2: 要素区(左2) + 预览区(右2) */
+        .r2left { grid-column: 1 / 3; grid-row: 2; }
+        .r2right { grid-column: 3 / 5; grid-row: 2; }
+
+        /* Row 3: 日志(左2) + 协议(右2) */
+        .r3left { grid-column: 1 / 3; grid-row: 3; }
+        .r3right { grid-column: 3 / 5; grid-row: 3; }
+
+        /* ===== 表单 ===== */
+        .form-row {
+            display: flex;
+            gap: clamp(3px, 0.4vw, 6px);
+            margin-bottom: clamp(3px, 0.4vw, 6px);
+            flex-shrink: 0;
+        }
+        .form-row:last-child { margin-bottom: 0; }
+        .form-group { flex: 1; min-width: 0; }
+        .form-group label {
+            display: block;
+            font-size: var(--font-xs);
+            color: #6b7f93;
+            margin-bottom: 2px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .form-group label .unit { color: #a3b1bf; font-weight: normal; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: clamp(3px, 0.35vw, 5px) clamp(5px, 0.5vw, 8px);
+            background: #f8fafc;
+            border: 1px solid #cbd6e2;
+            border-radius: 4px;
+            color: #2c3e50;
+            font-size: var(--font-sm);
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #1976d2;
+            box-shadow: 0 0 0 2px rgba(25,118,210,0.12);
+        }
+        input::placeholder { color: #a3b1bf; }
+        select { cursor: pointer; }
+        select option { background: #ffffff; color: #2c3e50; }
+
+        .btn {
+            padding: clamp(3px, 0.4vw, 5px) clamp(8px, 0.9vw, 14px);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: var(--font-sm);
+            font-weight: 600;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+        .btn-primary { background: #1976d2; color: #fff; }
+        .btn-primary:hover { background: #1e88e5; box-shadow: 0 2px 8px rgba(25,118,210,0.35); }
+        .btn-primary:disabled { background: #a9c6e4; color: #e8f0f8; cursor: not-allowed; }
+        .btn-secondary { background: #e6ecf2; color: #3d5468; }
+        .btn-secondary:hover { background: #d7e1eb; }
+        .btn-success { background: #2e7d32; color: #fff; }
+        .btn-success:hover { background: #388e3c; }
+        .btn-danger { background: #d32f2f; color: #fff; }
+        .btn-danger:hover { background: #e53935; }
+        .btn-sm { padding: clamp(2px, 0.25vw, 4px) clamp(6px, 0.6vw, 10px); font-size: var(--font-xs); }
+        .btn-xs { padding: 1px 5px; font-size: var(--font-xs); }
+
+        .btn-row {
+            display: flex;
+            align-items: center;
+            gap: clamp(4px, 0.5vw, 8px);
+            padding: 4px 0;
+            flex-shrink: 0;
+        }
+        .btn-sep {
+            width: 1px;
+            height: 18px;
+            background: #d8e0ea;
+            margin: 0 3px;
+        }
+
+        /* ===== 多目标连接配置 ===== */
+        .conn-targets {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .conn-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .conn-row input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: #1976d2;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .conn-row .sel-wrap { position: relative; }
+        .conn-row select {
+            height: 28px;
+            padding: 0 22px 0 6px;
+            border: 1px solid #cbd6e2;
+            border-radius: 4px;
+            background: #f8fafc;
+            color: #2c3e50;
+            font-size: 11px;
+            font-family: inherit;
+            appearance: none;
+            cursor: pointer;
+            width: 50px;
+        }
+        .conn-row .sel-wrap::after {
+            content: '\25BC';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7d92a6;
+            font-size: 7px;
+            pointer-events: none;
+        }
+        .conn-row input[type="text"] {
+            height: 28px;
+            padding: 0 6px;
+            border: 1px solid #cbd6e2;
+            border-radius: 4px;
+            background: #f8fafc;
+            color: #2c3e50;
+            font-size: 11px;
+            font-family: inherit;
+            flex: 1;
+            min-width: 70px;
+        }
+        .conn-row input.port-inp {
+            flex: 0 0 56px;
+            text-align: center;
+            min-width: 50px;
+        }
+        /* 隐藏数字输入框的上下箭头，节省空间 */
+        .conn-row input.port-inp::-webkit-outer-spin-button,
+        .conn-row input.port-inp::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .conn-row input.port-inp[type="number"] {
+            -moz-appearance: textfield;
+        }
+        .conn-row .row-idx {
+            width: 16px;
+            font-size: 10px;
+            color: #8b9aa9;
+            text-align: center;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+        .conn-status-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e3eaf2;
+        }
+
+        /* ===== 多测站地址配置 ===== */
+        .sta-shared-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .sta-shared-row .form-group { margin-bottom: 0; }
+        .sta-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 6px 0 3px;
+            font-size: var(--font-xs);
+            font-weight: 500;
+            color: #6b7f93;
+            flex-shrink: 0;
+        }
+        .sta-head-title span { color: #1976d2; }
+        .sta-targets {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .sta-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .sta-row input[type="checkbox"] {
+            width: 13px;
+            height: 13px;
+            accent-color: #1976d2;
+            margin: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .sta-row input[type="text"] {
+            height: 26px;
+            padding: 0 6px;
+            border: 1px solid #cbd6e2;
+            border-radius: 4px;
+            background: #f8fafc;
+            color: #2c3e50;
+            font-size: 11px;
+            font-family: inherit;
+            flex: 1;
+            min-width: 60px;
+        }
+        .sta-row .row-idx {
+            width: 16px;
+            font-size: 10px;
+            color: #8b9aa9;
+            text-align: center;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+        .sta-row .sta-del {
+            flex: 0 0 auto;
+            padding: 1px 6px;
+            font-size: var(--font-xs);
+        }
+        .sta-row .sta-del:disabled {
+            background: #e4e9ef;
+            color: #a6b3c0;
+            cursor: not-allowed;
+        }
+
+        /* ===== 连接状态 ===== */
+        .conn-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: var(--font-xs);
+            padding: 3px 6px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        /* ===== HEX预览 ===== */
+        .hex-display {
+            background: #f8fafc;
+            border: 1px solid #d8e0ea;
+            border-radius: 4px;
+            padding: clamp(4px, 0.5vw, 8px) clamp(5px, 0.6vw, 10px);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: var(--font-xs);
+            line-height: 1.5;
+            word-break: break-all;
+            color: #0d47a1;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .hex-display::-webkit-scrollbar { width: 4px; }
+        .hex-display::-webkit-scrollbar-track { background: #f1f5f9; }
+        .hex-display::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 2px; }
+
+        /* ===== 日志 ===== */
+        .log-area {
+            background: #f8fafc;
+            border: 1px solid #d8e0ea;
+            border-radius: 4px;
+            padding: clamp(3px, 0.4vw, 6px) clamp(5px, 0.6vw, 10px);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: var(--font-xs);
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-all;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .log-area::-webkit-scrollbar { width: 4px; }
+        .log-area::-webkit-scrollbar-track { background: #f1f5f9; }
+        .log-area::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 2px; }
+        .log-entry { margin-bottom: 1px; }
+        .log-time { color: #8b9aa9; }
+        .log-info { color: #1565c0; }
+        .log-success { color: #2e7d32; }
+        .log-error { color: #d32f2f; }
+        .log-warn { color: #ef6c00; }
+
+        /* ===== 选项卡 ===== */
+        .tabs { display: flex; border-bottom: 1px solid #d8e0ea; flex-shrink: 0; }
+        .tab {
+            padding: clamp(2px, 0.3vw, 5px) clamp(6px, 0.7vw, 12px);
+            cursor: pointer;
+            font-size: var(--font-xs);
+            color: #6b7f93;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.2s;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .tab:hover { color: #3d5468; }
+        .tab.active { color: #1565c0; border-bottom-color: #1976d2; }
+        .tab-content { display: none; flex: 1; overflow-y: auto; padding: 4px 0; }
+        .tab-content.active { display: block; }
+        .tab-content::-webkit-scrollbar { width: 4px; }
+        .tab-content::-webkit-scrollbar-track { background: #f1f5f9; }
+        .tab-content::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 2px; }
+
+        /* ===== 协议表格 ===== */
+        .proto-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-xs);
+        }
+        .proto-table th, .proto-table td {
+            padding: clamp(1px, 0.15vw, 3px) clamp(3px, 0.35vw, 6px);
+            border: 1px solid #d8e0ea;
+            text-align: left;
+        }
+        .proto-table th {
+            background: #eaf2f9;
+            color: #1565c0;
+            font-weight: 600;
+        }
+        .proto-table td { background: #fbfcfe; }
+        .proto-table .hl { color: #2e7d32; font-weight: 600; }
+
+        /* ===== 要素行 ===== */
+        .elem-row {
+            display: flex;
+            gap: clamp(3px, 0.3vw, 5px);
+            align-items: flex-end;
+            padding: clamp(2px, 0.25vw, 4px) clamp(4px, 0.45vw, 7px);
+            background: #f1f6fb;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .elem-row .form-group { margin-bottom: 0; }
+        .elem-row select { font-size: var(--font-xs); padding: 2px 3px; }
+        .elem-row input { font-size: var(--font-xs); padding: 2px 3px; }
+
+        .quick-fill {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .quick-fill .btn { font-size: var(--font-xs); padding: 1px 5px; }
+
+        .info-tip {
+            font-size: var(--font-xs);
+            color: #8b9aa9;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 6px;
+            font-size: var(--font-xs);
+            font-weight: 500;
+        }
+        .badge-success { background: rgba(46,125,50,0.12); color: #2e7d32; }
+        .badge-error { background: rgba(211,47,47,0.12); color: #d32f2f; }
+
+        .elements-used-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .elem-tag {
+            display: inline-block;
+            background: #f1f6fb;
+            padding: 1px 5px;
+            border-radius: 3px;
+            border: 1px solid #d5e1ec;
+            font-size: var(--font-xs);
+            white-space: nowrap;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .auto-send-active {
+            animation: pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(230,81,0,0.35) !important;
+        }
+
+        /* ===== 响应式：中等屏幕 (900-1199px) 2列布局 ===== */
+        @media (max-width: 1199px) {
+            body {
+                --font-xs: clamp(9px, 1.0vw, 10px);
+                --font-sm: clamp(10px, 1.1vw, 11px);
+                --font-md: clamp(11px, 1.2vw, 12px);
+                --font-lg: clamp(12px, 1.3vw, 14px);
+                --font-xl: clamp(14px, 1.5vw, 17px);
+            }
+            .main {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto 1fr 1fr;
+                gap: clamp(3px, 0.5vw, 6px);
+                overflow-y: auto;
+            }
+            .r1c1 { grid-column: 1; grid-row: 1; }
+            .r1c4 { grid-column: 2; grid-row: 1; }
+            .r1c2 { grid-column: 1 / 3; grid-row: 2; }
+            .r2left  { grid-column: 1 / 3; grid-row: 3; }
+            .r2right { grid-column: 1 / 3; grid-row: 4; }
+            .r3left  { grid-column: 1 / 3; grid-row: 5; }
+            .r3right { grid-column: 1 / 3; grid-row: 6; }
+            .card { min-height: 160px; }
+            .r2left, .r2right, .r3left, .r3right { min-height: 220px; }
+            .main::-webkit-scrollbar { width: 5px; }
+            .main::-webkit-scrollbar-track { background: #eef2f7; }
+            .main::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 3px; }
+        }
+
+        /* ===== 响应式：小屏幕 (<900px) 单列布局 ===== */
+        @media (max-width: 899px) {
+            body {
+                overflow-y: auto;
+                --font-xs: clamp(10px, 1.8vw, 12px);
+                --font-sm: clamp(11px, 2.0vw, 13px);
+                --font-md: clamp(12px, 2.2vw, 14px);
+                --font-lg: clamp(13px, 2.4vw, 16px);
+                --font-xl: clamp(15px, 2.6vw, 18px);
+            }
+            .header { flex-wrap: wrap; height: auto; min-height: 38px; padding: 4px 8px; gap: 4px; }
+            .header-badge { display: none; }
+            .main {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                gap: 4px;
+                padding: 4px 6px;
+                height: auto;
+                min-height: calc(100vh - 38px);
+                overflow-y: auto;
+            }
+            .r1c1, .r1c2, .r1c4,
+            .r2left, .r2right, .r3left, .r3right {
+                grid-column: 1; grid-row: auto;
+                min-height: auto;
+            }
+            .card { min-height: auto; }
+            .form-row { flex-wrap: wrap; }
+            body::-webkit-scrollbar { width: 5px; }
+            body::-webkit-scrollbar-track { background: #eef2f7; }
+            body::-webkit-scrollbar-thumb { background: #c6d2df; border-radius: 3px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== HEADER ===== -->
+    <div class="header">
+        <div class="header-left">
+            <span class="header-logo">水文监测数据 模拟上传工具</span>
+            <span class="header-badge">功能码32H · 定时报 · HEX/BCD编码</span>
+        </div>
+        <div class="header-right">
+            <span>版本: <strong>V1.3</strong></span>
+            <span>作者: <strong>邱小晨（YQC）</strong></span>
+        </div>
+    </div>
+
+    <!-- ===== MAIN GRID ===== -->
+    <div class="main">
+        <!-- R1C1: 连接配置 -->
+        <div class="card r1c1">
+            <div class="card-title"><span class="icon">&#x1F517;</span> 连接配置</div>
+            <div class="conn-targets">
+                <div class="conn-row">
+                    <span class="row-idx">1</span>
+                    <input type="checkbox" id="tgtEn1" checked title="启用此连接" onchange="onTgtToggle()">
+                    <div class="sel-wrap"><select id="transport1"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                    <input type="text" id="target1" placeholder="IP或域名" value="127.0.0.1">
+                    <input type="number" class="port-inp" id="port1" value="5001" min="1" max="65535">
+                </div>
+                <div class="conn-row">
+                    <span class="row-idx">2</span>
+                    <input type="checkbox" id="tgtEn2" title="启用此连接" onchange="onTgtToggle()">
+                    <div class="sel-wrap"><select id="transport2"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                    <input type="text" id="target2" placeholder="IP或域名">
+                    <input type="number" class="port-inp" id="port2" value="5001" min="1" max="65535">
+                </div>
+                <div class="conn-row">
+                    <span class="row-idx">3</span>
+                    <input type="checkbox" id="tgtEn3" title="启用此连接" onchange="onTgtToggle()">
+                    <div class="sel-wrap"><select id="transport3"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                    <input type="text" id="target3" placeholder="IP或域名">
+                    <input type="number" class="port-inp" id="port3" value="5001" min="1" max="65535">
+                </div>
+                <div class="conn-row">
+                    <span class="row-idx">4</span>
+                    <input type="checkbox" id="tgtEn4" title="启用此连接" onchange="onTgtToggle()">
+                    <div class="sel-wrap"><select id="transport4"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+                    <input type="text" id="target4" placeholder="IP或域名">
+                    <input type="number" class="port-inp" id="port4" value="5001" min="1" max="65535">
+                </div>
+            </div>
+            <div class="conn-status-row" style="margin-top:auto;">
+                <span id="connStatusIcon">&#x26AA;</span>
+                <span id="connStatusText" style="flex:1;font-size:var(--font-xs);">未检测</span>
+                <button class="btn btn-sm btn-primary" onclick="testConnection()" id="btnTestConn">测试连接</button>
+            </div>
+            <div id="connStatusDetail" style="font-size:var(--font-xs);color:#8b9aa9;margin-top:2px;"></div>
+        </div>
+
+        <!-- R1C2: 测站配置 -->
+        <div class="card r1c2">
+            <div class="card-title"><span class="icon">&#x1F4E1;</span> 测站配置</div>
+            <!-- 共享字段 -->
+            <div class="sta-shared-row">
+                <div class="form-group" style="flex:0 0 50px;">
+                    <label>中心地址</label>
+                    <input type="number" id="center_addr" value="1" min="1" max="255">
+                </div>
+                <div class="form-group" style="flex:1.2;">
+                    <label>密码 (HEX)</label>
+                    <input type="text" id="password" placeholder="0x1234" value="0x1234">
+                </div>
+                <div class="form-group" style="flex:1.5;">
+                    <label>测站分类</label>
+                    <select id="station_type">
+                        <option value="河道" selected>河道 (H)</option>
+                        <option value="降水">降水 (P)</option>
+                        <option value="水库(湖泊)">水库/湖泊 (K)</option>
+                        <option value="闸坝">闸坝 (Z)</option>
+                        <option value="泵站">泵站 (D)</option>
+                        <option value="潮汐">潮汐 (T)</option>
+                        <option value="墒情">墒情 (M)</option>
+                        <option value="地下水">地下水 (G)</option>
+                        <option value="水质">水质 (Q)</option>
+                    </select>
+                </div>
+            </div>
+            <!-- 多测站地址（动态添加） -->
+            <div class="sta-head">
+                <span class="sta-head-title">遥测站地址 <span id="staCountHint">(1路启用)</span></span>
+                <button class="btn btn-xs btn-primary" onclick="addStationAddr()" id="btnAddSta">+ 添加测站</button>
+            </div>
+            <div class="sta-targets" id="staTargets">
+                <div class="sta-row">
+                    <span class="row-idx">1</span>
+                    <input type="checkbox" checked title="启用此测站" onchange="onStaToggle()">
+                    <input type="text" placeholder="地址" value="0012345678">
+                    <button class="btn btn-xs btn-danger sta-del" onclick="removeStationAddr(this)" title="删除测站" disabled>&#x2715;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- R1C4: 时间 + 操作 -->
+        <div class="card r1c4">
+            <div class="card-title"><span class="icon">&#x23F1;</span> 时间 & 操作</div>
+            <div class="form-group" style="margin-bottom:3px;">
+                <label>发报时间</label>
+                <input type="datetime-local" id="report_time" step="1">
+            </div>
+            <div class="form-group" style="margin-bottom:3px;">
+                <label>观测时间</label>
+                <input type="datetime-local" id="obs_time">
+            </div>
+            <div style="display:flex;gap:4px;margin-bottom:4px;">
+                <div class="form-group" style="flex:1;">
+                    <label>流水号</label>
+                    <input type="number" id="serial_no" value="1" min="1" max="65535">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>电压(V)</label>
+                    <input type="number" id="voltage" placeholder="12.50" step="0.01" value="12.50">
+                </div>
+            </div>
+            <div class="card-title" style="border-top:1px solid #e3eaf2;padding-top:5px;margin-bottom:4px;font-size:var(--font-sm);">操作</div>
+            <div class="btn-row" style="flex-wrap:wrap;gap:4px;">
+                <button class="btn btn-primary" onclick="previewMessage()">&#x1F50D; 预览报文</button>
+                <button class="btn btn-success" onclick="sendData()" id="btnSend">&#x1F4E4; 发送报文</button>
+                <span style="display:flex;align-items:center;gap:3px;font-size:var(--font-xs);">
+                    <label>次数:</label>
+                    <input type="number" id="count" value="1" min="1" max="100" style="width:42px;padding:2px 3px;">
+                </span>
+            </div>
+            <div class="btn-row" style="flex-wrap:wrap;gap:4px;margin-top:4px;">
+                <button class="btn btn-danger" onclick="toggleAutoSend()" id="btnAutoSend" style="background:#e65100;">&#x23F1; 启动5分钟自动发送</button>
+                <button class="btn btn-secondary" onclick="clearLog()">&#x1F5D1; 清空日志</button>
+            </div>
+            <div id="autoSendStatus" style="display:none;align-items:center;gap:4px;font-size:var(--font-xs);margin-top:3px;">
+                <span style="width:7px;height:7px;border-radius:50%;background:#2e7d32;animation:pulse 1s infinite;"></span>
+                <span style="color:#2e7d32;font-weight:600;" id="autoSendCountdown">下次: --:--</span>
+                <span style="color:#6b7f93;" id="autoSendCount">已发: 0次</span>
+            </div>
+        </div>
+
+        <!-- R2 Left: 要素数据 -->
+        <div class="card r2left">
+            <div class="card-title">
+                <span class="icon">&#x1F4CA;</span> 要素数据
+                <span class="badge" style="margin-left:6px;">32H 定时报</span>
+                <button class="btn btn-sm btn-primary" onclick="addCustomElement()" style="margin-left:auto;padding:3px 10px;">+ 添加要素</button>
+            </div>
+            <div class="card-body" id="customElementsContainer">
+                <div class="info-tip" id="customElementsEmpty">尚未添加自定义要素，点击"+ 添加要素"开始构建报文，或使用下方快速添加</div>
+            </div>
+            <div style="flex-shrink:0;margin-top:6px;">
+                <span style="font-size:var(--font-xs);color:#6b7f93;">快速添加: </span>
+                <div class="quick-fill">
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('PN05', '5分降水量', '0x22', 5, 1)">PN05 降水量</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('Z', '河道水位', '0x39', 7, 3)">Z 河道水位</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('ZU', '库上水位', '0x3B', 7, 3)">ZU 库上水位</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('Q', '瞬时流量', '0x60', 9, 3)">Q 流量</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('ZD', '库下水位', '0x4B', 7, 3)">ZD 库下水位</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('WS', '风速', '0xA2', 5, 2)">WS 风速</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('TA', '气温', '0xA4', 4, 1)">TA 气温</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('PA', '气压', '0xA8', 5, 1)">PA 气压</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('V', '流速', '0x55', 5, 3)">V 流速</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('TW', '水温', '0x78', 4, 1)">TW 水温</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('RH', '湿度', '0xA6', 4, 1)">RH 湿度</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('PH', 'pH值', '0xB1', 4, 2)">PH pH值</button>
+                    <button class="btn btn-xs btn-secondary" onclick="quickAdd('DO', '溶解氧', '0xB2', 4, 1)">DO 溶解氧</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- R2 Right: HEX预览 + 要素清单 -->
+        <div class="card r2right">
+            <div class="card-title"><span class="icon">&#x1F4CB;</span> 报文HEX预览</div>
+            <div class="hex-display" id="hexDisplay">尚未生成报文，请先点击"预览报文"或填入数据后点击"发送报文"</div>
+            <div style="font-size:var(--font-xs);color:#6b7f93;flex-shrink:0;margin-top:3px;" id="hexInfo"></div>
+            <div style="margin-top:4px;flex-shrink:0;">
+                <span style="font-size:var(--font-xs);color:#6b7f93;font-weight:600;">使用要素:</span>
+                <div class="elements-used-row" id="elementsUsedContent">
+                    <span class="info-tip">暂无</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- R3 Left: 发送日志 -->
+        <div class="card r3left">
+            <div class="card-title"><span class="icon">&#x1F4DC;</span> 发送日志</div>
+            <div class="log-area" id="logArea">
+                <div class="log-entry"><span class="log-time">[就绪]</span> <span class="log-info">SL651-2014 数据模拟上传工具已就绪，等待操作... Ctrl+Enter快捷发送</span></div>
+            </div>
+        </div>
+
+        <!-- R3 Right: 协议说明 -->
+        <div class="card r3right">
+            <div class="card-title" style="margin-bottom:0;padding-bottom:0;border-bottom:none;">
+                <span class="icon">&#x1F4D6;</span> 协议说明
+            </div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('tabFrame')">帧结构</div>
+                <div class="tab" onclick="switchTab('tabElement')">要素编码</div>
+                <div class="tab" onclick="switchTab('tabExample')">报文示例</div>
+            </div>
+            <div id="tabFrame" class="tab-content active">
+                <table class="proto-table">
+                    <tr><th>#</th><th>名称</th><th>字节</th><th>说明</th></tr>
+                    <tr><td>1</td><td>帧起始符</td><td class="hl">2</td><td>7E7EH</td></tr>
+                    <tr><td>2</td><td>中心站地址</td><td class="hl">1</td><td>HEX, 1-255</td></tr>
+                    <tr><td>3</td><td>遥测站地址</td><td class="hl">5</td><td>HEX/BCD</td></tr>
+                    <tr><td>4</td><td>密码</td><td class="hl">2</td><td>HEX</td></tr>
+                    <tr><td>5</td><td>功能码</td><td class="hl">1</td><td>32H (定时报)</td></tr>
+                    <tr><td>6</td><td>报文长度</td><td class="hl">2</td><td>高4bit:0; 低12bit:长度</td></tr>
+                    <tr><td>7</td><td>报文起始符</td><td class="hl">1</td><td>STX (02H)</td></tr>
+                    <tr><td>8</td><td>报文正文</td><td>变长</td><td>HEX/BCD</td></tr>
+                    <tr><td>9</td><td>报文结束符</td><td class="hl">1</td><td>ETX (03H)</td></tr>
+                    <tr><td>10</td><td>CRC校验</td><td class="hl">2</td><td>CRC16(高位在前)</td></tr>
+                </table>
+                <div style="margin-top:4px;font-size:var(--font-xs);color:#1565c0;font-weight:600;">正文结构 (32H):</div>
+                <table class="proto-table">
+                    <tr><td>流水号</td><td class="hl">2B</td><td>发报时间</td><td class="hl">6B BCD</td></tr>
+                    <tr><td>地址标识</td><td class="hl">2B F1F1</td><td>遥测站地址</td><td class="hl">5B</td></tr>
+                    <tr><td>分类码</td><td class="hl">1B</td><td>观测时间标识</td><td class="hl">2B F0F0</td></tr>
+                    <tr><td>观测时间</td><td class="hl">5B BCD</td><td>要素组</td><td>变长</td></tr>
+                </table>
+            </div>
+            <div id="tabElement" class="tab-content">
+                <table class="proto-table">
+                    <tr><th>标识</th><th>引导符</th><th>名称</th><th>格式</th><th>单位</th></tr>
+                    <tr><td>PN05</td><td class="hl">22H</td><td>5分时段降水量</td><td>N(5,1)</td><td>mm</td></tr>
+                    <tr><td>Z</td><td class="hl">39H</td><td>瞬时河道水位</td><td>N(7,3)</td><td>m</td></tr>
+                    <tr><td>ZU</td><td class="hl">3BH</td><td>库(闸)上水位</td><td>N(7,3)</td><td>m</td></tr>
+                    <tr><td>ZD</td><td class="hl">4BH</td><td>库(闸)下水位</td><td>N(7,3)</td><td>m</td></tr>
+                    <tr><td>Q</td><td class="hl">60H</td><td>瞬时流量</td><td>N(9,3)</td><td>m&#179;/s</td></tr>
+                    <tr><td>V</td><td class="hl">55H</td><td>断面平均流速</td><td>N(5,3)</td><td>m/s</td></tr>
+                    <tr><td>WS</td><td class="hl">A2H</td><td>风速</td><td>N(5,2)</td><td>m/s</td></tr>
+                    <tr><td>WD</td><td class="hl">A1H</td><td>风向</td><td>N(3,0)</td><td>&#176;</td></tr>
+                    <tr><td>TA</td><td class="hl">A4H</td><td>气温</td><td>N(4,1)</td><td>&#8451;</td></tr>
+                    <tr><td>PA</td><td class="hl">A8H</td><td>气压</td><td>N(5,1)</td><td>hPa</td></tr>
+                    <tr><td>RH</td><td class="hl">A6H</td><td>相对湿度</td><td>N(4,1)</td><td>%</td></tr>
+                    <tr><td>TW</td><td class="hl">78H</td><td>水温</td><td>N(4,1)</td><td>&#8451;</td></tr>
+                    <tr><td>PH</td><td class="hl">B1H</td><td>pH值</td><td>N(4,2)</td><td>-</td></tr>
+                    <tr><td>DO</td><td class="hl">B2H</td><td>溶解氧</td><td>N(4,1)</td><td>mg/L</td></tr>
+                    <tr><td>GH</td><td class="hl">50H</td><td>闸门开启高度</td><td>N(5,2)</td><td>m</td></tr>
+                    <tr><td>GN</td><td class="hl">51H</td><td>闸门开启孔数</td><td>N(3,0)</td><td>孔</td></tr>
+                    <tr><td>电压</td><td class="hl">38H</td><td>电源电压</td><td>N(4,2)</td><td>V</td></tr>
+                </table>
+                <div class="info-tip" style="margin-top:4px;">
+                    数据定义字节: (字节数 &lt;&lt; 3) | 小数位数<br>
+                    引导符输入: 0x60 / 60H / 60 等格式
+                </div>
+            </div>
+            <div id="tabExample" class="tab-content">
+                <div style="font-size:var(--font-xs);color:#6b7f93;margin-bottom:4px;">
+                    示例: 中心01, 站0012345678, 密码1234, 河道, PN05=2.5mm, Z=150.325m, 电压12.50V
+                </div>
+                <div class="hex-display" style="max-height:120px;">
+7E7E 01 0012345678 1234 32 0024 02
+  0001 250725120000 F1 0012345678 48 F0 2507251200
+  22 06 000025 39 08 00150325 38 04 1250
+03 9047
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 要素定义 =====
+        const ELEMENT_OPTIONS = {{ element_options | tojson }};
+
+        // ===== 时间初始化 =====
+        function initTimes() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const d = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+            document.getElementById('report_time').value = `${d}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            document.getElementById('obs_time').value = `${d}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        }
+        initTimes();
+
+        // ===== 自定义要素 =====
+        let customElemCounter = 0;
+
+        function addCustomElement(guide, name, totalDigits, decimalPlaces, elementId) {
+            customElemCounter++;
+            const id = customElemCounter;
+            const container = document.getElementById('customElementsContainer');
+            const empty = document.getElementById('customElementsEmpty');
+            if (empty) empty.style.display = 'none';
+
+            let optionsHtml = '<option value="">-- 自定义 --</option>';
+            ELEMENT_OPTIONS.forEach(elem => {
+                const sel = (elementId === elem[0]) ? ' selected' : '';
+                const gHex = '0x' + elem[0].toString(16).toUpperCase().padStart(2, '0');
+                optionsHtml += `<option value="${elem[0]}" data-name="${esc(elem[1])}" data-total="${elem[2]}" data-dec="${elem[3]}" data-unit="${esc(elem[4]||'')}" data-guide="${gHex}"${sel}>[${gHex}] ${esc(elem[1])} N(${elem[2]},${elem[3]})</option>`;
+            });
+
+            const row = document.createElement('div');
+            row.className = 'elem-row';
+            row.id = `customRow${id}`;
+            row.innerHTML = `
+                <div class="form-group" style="flex:2.5;min-width:180px;">
+                    <select id="customSelect${id}" onchange="onElementSelect(${id})" style="font-size:var(--font-xs);">${optionsHtml}</select>
+                </div>
+                <div class="form-group" style="flex:0 0 56px;">
+                    <label>引导符</label>
+                    <input type="text" id="customGuide${id}" value="${esc(guide||'')}" style="font-family:Consolas,monospace;" readonly>
+                </div>
+                <div class="form-group" style="flex:0 0 42px;">
+                    <label>位数</label>
+                    <input type="number" id="customTotal${id}" value="${totalDigits||5}" min="1" max="31" readonly>
+                </div>
+                <div class="form-group" style="flex:0 0 42px;">
+                    <label>小数</label>
+                    <input type="number" id="customDec${id}" value="${decimalPlaces||1}" min="0" max="10" readonly>
+                </div>
+                <div class="form-group" style="flex:1.5;min-width:80px;">
+                    <label>数值 <span id="customUnit${id}" style="color:#8b9aa9;"></span></label>
+                    <input type="number" id="customVal${id}" placeholder="0" step="any">
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="removeCustomElement(${id})" title="删除" style="flex:0 0 28px;padding:5px;">&#x2715;</button>
+                <input type="hidden" id="customElemId${id}" value="${elementId||''}">
+            `;
+            container.appendChild(row);
+            if (elementId) onElementSelect(id);
+            // 要素变更时自动保存配置
+            ['customSelect' + id, 'customGuide' + id, 'customTotal' + id,
+             'customDec' + id, 'customVal' + id, 'customElemId' + id].forEach(rid => {
+                const el = document.getElementById(rid);
+                if (el) {
+                    el.addEventListener('change', scheduleSave);
+                    if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                        el.addEventListener('input', scheduleSave);
+                    }
+                }
+            });
+        }
+
+        function onElementSelect(rowId) {
+            const sel = document.getElementById(`customSelect${rowId}`);
+            if (!sel) return;
+            const opt = sel.options[sel.selectedIndex];
+            const eid = sel.value;
+            const nEl = document.getElementById(`customGuide${rowId}`);
+            const tEl = document.getElementById(`customTotal${rowId}`);
+            const dEl = document.getElementById(`customDec${rowId}`);
+            const uEl = document.getElementById(`customUnit${rowId}`);
+            const eidEl = document.getElementById(`customElemId${rowId}`);
+            if (eid) {
+                nEl.value = opt.getAttribute('data-guide');
+                tEl.value = opt.getAttribute('data-total');
+                dEl.value = opt.getAttribute('data-dec');
+                uEl.textContent = opt.getAttribute('data-unit') || '';
+                eidEl.value = eid;
+                nEl.readOnly = tEl.readOnly = dEl.readOnly = true;
+            } else {
+                nEl.value = ''; tEl.value = '5'; dEl.value = '1';
+                uEl.textContent = ''; eidEl.value = '';
+                nEl.readOnly = tEl.readOnly = dEl.readOnly = false;
+            }
+        }
+
+        function removeCustomElement(id) {
+            const row = document.getElementById(`customRow${id}`);
+            if (row) row.remove();
+            const c = document.getElementById('customElementsContainer');
+            if (c.children.length === 0) {
+                const e = document.getElementById('customElementsEmpty');
+                if (e) e.style.display = '';
+            }
+            scheduleSave();
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function quickAdd(code, name, guide, total, dec) {
+            addCustomElement(guide, `${code} ${name}`, total, dec, parseInt(guide));
+        }
+
+        function getCustomElements() {
+            const rows = document.getElementById('customElementsContainer').querySelectorAll('.elem-row');
+            const elems = [];
+            rows.forEach(row => {
+                const m = row.id.match(/\d+$/);
+                if (!m) return;
+                const id = m[0];
+                const el = document.getElementById(`customElemId${id}`);
+                const g = document.getElementById(`customGuide${id}`);
+                const t = document.getElementById(`customTotal${id}`);
+                const d = document.getElementById(`customDec${id}`);
+                const v = document.getElementById(`customVal${id}`);
+                const val = v ? v.value : '';
+                const eid = el ? el.value : '';
+                if (eid && val) {
+                    elems.push({ element_id: parseInt(eid), value: parseFloat(val) || 0 });
+                } else {
+                    const guide = g ? g.value.trim() : '';
+                    if (guide && val) {
+                        elems.push({
+                            guide: guide,
+                            total_digits: parseInt(t ? t.value : 5) || 5,
+                            decimal_places: parseInt(d ? d.value : 1) || 1,
+                            value: parseFloat(val) || 0,
+                        });
+                    }
+                }
+            });
+            return elems;
+        }
+
+        // ===== 多目标连接测试 =====
+        function getTargets() {
+            const ts = [];
+            for (let i = 1; i <= 4; i++) {
+                const en = document.getElementById('tgtEn' + i).checked;
+                const target = document.getElementById('target' + i).value.trim();
+                if (en && target) {
+                    ts.push({
+                        enabled: true,
+                        transport: document.getElementById('transport' + i).value,
+                        target: target,
+                        port: parseInt(document.getElementById('port' + i).value) || 5001,
+                    });
+                }
+            }
+            return ts;
+        }
+        
+        function getTargetsAll() {
+            const ts = [];
+            for (let i = 1; i <= 4; i++) {
+                ts.push({
+                    enabled: document.getElementById('tgtEn' + i).checked,
+                    transport: document.getElementById('transport' + i).value,
+                    target: document.getElementById('target' + i).value.trim(),
+                    port: parseInt(document.getElementById('port' + i).value) || 5001,
+                });
+            }
+            return ts;
+        }
+
+        function onTgtToggle() {
+            const ts = getTargets();
+            const enCount = ts.length;
+            document.getElementById('connStatusIcon').textContent = '\u26AA';
+            document.getElementById('connStatusText').textContent = enCount + '路已启用';
+            document.getElementById('connStatusText').style.color = '#3d5468';
+            document.getElementById('connStatusDetail').textContent = '';
+        }
+
+        // ===== 多测站地址（动态添加，默认1个，最多7个） =====
+        const MAX_STATIONS = 7;
+
+        function addStationRow(enabled, addr) {
+            const container = document.getElementById('staTargets');
+            const div = document.createElement('div');
+            div.className = 'sta-row';
+            div.innerHTML = `
+                <span class="row-idx"></span>
+                <input type="checkbox" ${enabled !== false ? 'checked' : ''} title="启用此测站" onchange="onStaToggle();scheduleSave()">
+                <input type="text" placeholder="地址" value="${esc(addr || '')}" oninput="scheduleSave()">
+                <button class="btn btn-xs btn-danger sta-del" onclick="removeStationAddr(this)" title="删除测站">&#x2715;</button>
+            `;
+            container.appendChild(div);
+            updateStaRows();
+            return div;
+        }
+
+        function addStationAddr() {
+            const container = document.getElementById('staTargets');
+            const rows = container.querySelectorAll('.sta-row');
+            if (rows.length >= MAX_STATIONS) {
+                addLog('最多只能添加 ' + MAX_STATIONS + ' 个测站地址', 'warn');
+                return;
+            }
+            addStationRow(true, '');
+            onStaToggle();
+            addLog('已添加第 ' + (rows.length + 1) + ' 个测站地址 (' + (rows.length + 1) + '/' + MAX_STATIONS + ')', 'info');
+            scheduleSave();
+        }
+
+        function removeStationAddr(btn) {
+            const container = document.getElementById('staTargets');
+            const rows = container.querySelectorAll('.sta-row');
+            if (rows.length <= 1) return;
+            btn.closest('.sta-row').remove();
+            updateStaRows();
+            onStaToggle();
+            addLog('已删除一个测站地址，剩余 ' + (rows.length - 1) + ' 个', 'warn');
+            scheduleSave();
+        }
+
+        function updateStaRows() {
+            const container = document.getElementById('staTargets');
+            const rows = container.querySelectorAll('.sta-row');
+            rows.forEach((row, i) => {
+                const idx = row.querySelector('.row-idx');
+                if (idx) idx.textContent = i + 1;
+                const del = row.querySelector('.sta-del');
+                if (del) del.disabled = (rows.length <= 1);
+            });
+        }
+
+        function getStationAddrs() {
+            const addrs = [];
+            document.querySelectorAll('#staTargets .sta-row').forEach(row => {
+                const en = row.querySelector('input[type="checkbox"]').checked;
+                const addr = row.querySelector('input[type="text"]').value.trim();
+                if (en && addr) {
+                    addrs.push(addr);
+                }
+            });
+            return addrs;
+        }
+
+        function onStaToggle() {
+            const addrs = getStationAddrs();
+            document.getElementById('staCountHint').textContent = '(' + addrs.length + '路启用)';
+        }
+
+        // ===== 配置自动保存与恢复 =====
+        let saveTimer = null;
+
+        function scheduleSave() {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveConfig, 600);
+        }
+
+        function collectState() {
+            const stations = [];
+            document.querySelectorAll('#staTargets .sta-row').forEach(row => {
+                stations.push({
+                    enabled: row.querySelector('input[type="checkbox"]').checked,
+                    addr: row.querySelector('input[type="text"]').value.trim()
+                });
+            });
+            const targets = [];
+            for (let i = 1; i <= 4; i++) {
+                targets.push({
+                    enabled: document.getElementById('tgtEn' + i).checked,
+                    transport: document.getElementById('transport' + i).value,
+                    target: document.getElementById('target' + i).value.trim(),
+                    port: parseInt(document.getElementById('port' + i).value) || 5001
+                });
+            }
+            const elements = [];
+            document.querySelectorAll('#customElementsContainer .elem-row').forEach(row => {
+                const m = row.id.match(/\d+$/);
+                if (!m) return;
+                const id = m[0];
+                const g = document.getElementById('customGuide' + id);
+                const t = document.getElementById('customTotal' + id);
+                const d = document.getElementById('customDec' + id);
+                const v = document.getElementById('customVal' + id);
+                const eid = document.getElementById('customElemId' + id);
+                const val = v ? v.value : '';
+                if ((g && g.value.trim()) && val) {
+                    elements.push({
+                        element_id: eid && eid.value ? parseInt(eid.value) : null,
+                        guide: g.value.trim(),
+                        total_digits: parseInt(t ? t.value : 5) || 5,
+                        decimal_places: parseInt(d ? d.value : 1) || 1,
+                        value: parseFloat(val) || 0
+                    });
+                }
+            });
+            return {
+                targets: targets,
+                stations: stations,
+                center_addr: parseInt(document.getElementById('center_addr').value) || 1,
+                password: document.getElementById('password').value.trim(),
+                station_type: document.getElementById('station_type').value,
+                serial_no: parseInt(document.getElementById('serial_no').value) || 1,
+                voltage: parseFloat(document.getElementById('voltage').value) || 12.50,
+                count: parseInt(document.getElementById('count').value) || 1,
+                elements: elements
+            };
+        }
+
+        function saveConfig() {
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(collectState())
+            }).then(r => r.json()).then(j => {
+                if (j.success) addLog('配置已自动保存', 'info');
+            }).catch(e => console.log('配置保存失败: ' + e.message));
+        }
+
+        function restoreConfig() {
+            fetch('/api/config').then(r => r.json()).then(cfg => {
+                if (!cfg || !cfg.targets) return;
+                // 恢复连接目标
+                for (let i = 1; i <= 4; i++) {
+                    const t = cfg.targets[i - 1];
+                    if (!t) continue;
+                    document.getElementById('tgtEn' + i).checked = t.enabled !== false;
+                    document.getElementById('transport' + i).value = t.transport || 'tcp';
+                    document.getElementById('target' + i).value = t.target || '';
+                    document.getElementById('port' + i).value = t.port || 5001;
+                }
+                // 恢复测站
+                if (cfg.stations && cfg.stations.length) {
+                    const cont = document.getElementById('staTargets');
+                    cont.innerHTML = '';
+                    cfg.stations.forEach(s => addStationRow(s.enabled !== false, s.addr || ''));
+                    onStaToggle();
+                }
+                // 恢复共享字段
+                if (cfg.center_addr) document.getElementById('center_addr').value = cfg.center_addr;
+                if (cfg.password) document.getElementById('password').value = cfg.password;
+                if (cfg.station_type) document.getElementById('station_type').value = cfg.station_type;
+                if (cfg.serial_no) document.getElementById('serial_no').value = cfg.serial_no;
+                if (cfg.voltage) document.getElementById('voltage').value = cfg.voltage;
+                if (cfg.count) document.getElementById('count').value = cfg.count;
+                // 恢复要素
+                if (cfg.elements && cfg.elements.length) {
+                    const cont = document.getElementById('customElementsContainer');
+                    cont.innerHTML = '';
+                    document.getElementById('customElementsEmpty').style.display = 'none';
+                    cfg.elements.forEach(e => {
+                        if (e.element_id) {
+                            addCustomElement(e.guide, '', e.total_digits, e.decimal_places, e.element_id);
+                        } else {
+                            addCustomElement(e.guide, '', e.total_digits, e.decimal_places);
+                        }
+                        const rows = document.querySelectorAll('#customElementsContainer .elem-row');
+                        const last = rows[rows.length - 1];
+                        const m = last ? last.id.match(/\d+$/) : null;
+                        if (m) {
+                            const v = document.getElementById('customVal' + m[0]);
+                            if (v) v.value = e.value;
+                        }
+                    });
+                }
+                if (typeof onTgtToggle === 'function') onTgtToggle();
+            }).catch(e => console.log('配置恢复失败: ' + e.message));
+        }
+
+        async function testConnection() {
+            const btn = document.getElementById('btnTestConn');
+            btn.disabled = true; btn.textContent = '检测中...';
+            const targets = getTargets();
+            if (targets.length === 0) {
+                document.getElementById('connStatusIcon').textContent = '\u26AA';
+                document.getElementById('connStatusText').textContent = '无启用目标';
+                document.getElementById('connStatusDetail').textContent = '请至少配置并启用一个连接';
+                btn.disabled = false; btn.textContent = '测试连接';
+                return;
+            }
+            try {
+                const r = await fetch('/api/test_connection', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({targets: targets})
+                });
+                const j = await r.json();
+                const i = document.getElementById('connStatusIcon');
+                const t = document.getElementById('connStatusText');
+                const dd = document.getElementById('connStatusDetail');
+                if (j.success) {
+                    i.textContent = '\u{1F7E2}'; t.textContent = targets.length + '路 全部可达'; t.style.color = '#2e7d32';
+                } else {
+                    const fails = j.results.filter(r => !r.success).length;
+                    i.textContent = '\u{1F7E0}'; t.textContent = fails + '/' + targets.length + '路 失败'; t.style.color = '#ef6c00';
+                }
+                let detail = '';
+                j.results.forEach(r => {
+                    const icon = r.success ? '\u2713' : '\u2717';
+                    const color = r.success ? '#2e7d32' : '#d32f2f';
+                    detail += '<span style="color:' + color + '">' + icon + ' #' + r.index + ': ' + r.transport.toUpperCase() + ' ' + r.target + ':' + r.port + '</span><br>';
+                    addLog('[连接测试#' + r.index + '] ' + r.message, r.success ? 'success' : 'error');
+                });
+                dd.innerHTML = detail.slice(0, -4);
+            } catch(e) {
+                document.getElementById('connStatusIcon').textContent = '\u26AA';
+                document.getElementById('connStatusText').textContent = '异常';
+                document.getElementById('connStatusText').style.color = '#d32f2f';
+                document.getElementById('connStatusDetail').textContent = e.message;
+                addLog('连接异常: ' + e.message, 'error');
+            } finally { btn.disabled = false; btn.textContent = '测试连接'; }
+        }
+
+        // ===== 选项卡 =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            // find tab button by matching onclick
+            document.querySelectorAll('.tab').forEach(t => {
+                if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(tabId)) {
+                    t.classList.add('active');
+                }
+            });
+        }
+
+        // ===== 日志 =====
+        function addLog(msg, type) {
+            type = type || 'info';
+            const la = document.getElementById('logArea');
+            const t = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+            const e = document.createElement('div');
+            e.className = 'log-entry';
+            e.innerHTML = '<span class="log-time">[' + t + ']</span> <span class="log-' + type + '">' + msg + '</span>';
+            la.appendChild(e);
+            la.scrollTop = la.scrollHeight;
+        }
+        function clearLog() {
+            document.getElementById('logArea').innerHTML = '';
+            addLog('日志已清空');
+        }
+
+        // ===== 表单数据 =====
+        function getFormData() {
+            const ts = getTargets();
+            return {
+                targets: ts,
+                center_addr: parseInt(document.getElementById('center_addr').value) || 1,
+                station_addrs: getStationAddrs(),
+                password: document.getElementById('password').value.trim(),
+                station_type: document.getElementById('station_type').value,
+                report_time: document.getElementById('report_time').value,
+                obs_time: document.getElementById('obs_time').value,
+                serial_no: parseInt(document.getElementById('serial_no').value) || 1,
+                voltage: parseFloat(document.getElementById('voltage').value) || 12.50,
+                count: 1,
+                custom_elements: getCustomElements(),
+            };
+        }
+
+        function displayElementsUsed(elems) {
+            const c = document.getElementById('elementsUsedContent');
+            if (!elems || elems.length === 0) { c.innerHTML = '<span class="info-tip">暂无</span>'; return; }
+            let h = '';
+            elems.forEach(e => {
+                h += '<span class="elem-tag"><strong>' + (e.guide||'') + '</strong> N(' + (e.total_digits||'?') + ',' + (e.decimal_places!==undefined?e.decimal_places:'?') + ') = <strong style="color:#2e7d32;">' + (e.value!==undefined?e.value:'?') + '</strong></span>';
+            });
+            c.innerHTML = h;
+        }
+
+        // ===== 预览 =====
+        async function previewMessage() {
+            const d = getFormData();
+            if (d.station_addrs.length === 0) { addLog('请至少启用并填写一个测站地址', 'warn'); return; }
+            addLog('正在生成报文预览 (' + d.station_addrs.length + '个测站)...', 'info');
+            try {
+                const r = await fetch('/api/preview', {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d)
+                });
+                const j = await r.json();
+                if (j.success) {
+                    document.getElementById('hexDisplay').textContent = j.message_hex.match(/.{1,2}/g).join(' ');
+                    document.getElementById('hexInfo').textContent = '总长: ' + j.message_length + 'B | 正文: ' + j.body_length + 'B | 发报: ' + j.report_time + ' | 观测: ' + j.obs_time + ' | CRC: ' + (j.decoded.crc_valid?'\u2713':'\u2717') + ' | 测站: ' + j.station_addr;
+                    displayElementsUsed(j.elements_used);
+                    if (j.station_count > 1) {
+                        addLog('预览成功: ' + j.station_count + '个测站报文 (' + j.station_addrs.join(', ') + ')', 'success');
+                    } else {
+                        addLog('预览生成成功, 长度 ' + j.message_length + ' 字节', 'success');
+                    }
+                } else {
+                    addLog('预览失败: ' + j.error, 'error');
+                }
+            } catch(e) { addLog('请求失败: ' + e.message, 'error'); }
+        }
+
+        // ===== 自动发送 =====
+        let isAutoSending = false, autoSendTimer = null, autoSendCount = 0, autoSerialNo = 1;
+        let countdownTimer = null, nextSendTime = null;
+
+        function getNext5MinBoundary() {
+            const fiveMin = 5 * 60 * 1000;
+            return Math.ceil(Date.now() / fiveMin) * fiveMin;
+        }
+
+        function updateFormTime() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const d = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+            // 发报时间精确到秒
+            document.getElementById('report_time').value = d + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            // 观测时间精确到分钟（SL651协议观测时间不含秒）
+            document.getElementById('obs_time').value = d + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+        }
+
+        // 获取北京时间格式化字符串（用于日志显示）
+        function getBeijingTimeStr() {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+        }
+
+        function toggleAutoSend() {
+            isAutoSending ? stopAutoSend() : startAutoSend();
+        }
+
+        function scheduleNextAutoSend() {
+            if (!isAutoSending) return;
+            // 实时校准：基于当前系统时间，精确计算到下一个5分钟整点边界
+            nextSendTime = getNext5MinBoundary();
+            // +200ms 安全裕度，确保时钟已跨过目标边界
+            const delay = nextSendTime - Date.now() + 200;
+            updateCountdown();
+            autoSendTimer = setTimeout(() => {
+                doAutoSend();
+            }, delay);
+        }
+
+        function startAutoSend() {
+            if (getCustomElements().length === 0) { alert('请先添加至少一个要素再启动自动发送'); return; }
+            if (getStationAddrs().length === 0) { alert('请至少启用一个测站地址再启动自动发送'); return; }
+            isAutoSending = true; autoSendCount = 0;
+            autoSerialNo = parseInt(document.getElementById('serial_no').value) || 1;
+            const btn = document.getElementById('btnAutoSend');
+            btn.textContent = '\u23F8 停止自动发送';
+            btn.classList.add('auto-send-active');
+            document.getElementById('btnSend').disabled = true;
+            document.getElementById('autoSendStatus').style.display = 'flex';
+            // 对齐到下一个5分钟整点边界（:00, :05, :10, :15...）
+            nextSendTime = getNext5MinBoundary();
+            const nextDate = new Date(nextSendTime);
+            const pad = (n) => String(n).padStart(2, '0');
+            const nextTimeStr = pad(nextDate.getHours()) + ':' + pad(nextDate.getMinutes()) + ':' + pad(nextDate.getSeconds());
+            const delay = nextSendTime - Date.now();
+            const sec = Math.round(delay / 1000);
+            addLog('\u{1F504} 5分钟整点自动发送已启动，目标时间: 每个整5分钟（:00, :05, :10...），首次发送: ' + nextTimeStr + ' (' + Math.floor(sec / 60) + '分' + (sec % 60) + '秒后)', 'info');
+            scheduleNextAutoSend();
+        }
+
+        function stopAutoSend() {
+            isAutoSending = false;
+            const btn = document.getElementById('btnAutoSend');
+            btn.textContent = '\u23F1 启动5分钟自动发送';
+            btn.classList.remove('auto-send-active');
+            document.getElementById('btnSend').disabled = false;
+            document.getElementById('autoSendStatus').style.display = 'none';
+            if (autoSendTimer) { clearTimeout(autoSendTimer); autoSendTimer = null; }
+            if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+            addLog('\u23F9 自动发送已停止, 共 ' + autoSendCount + ' 次', 'warn');
+        }
+
+        function updateCountdown() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            const tick = () => {
+                const rm = Math.max(0, nextSendTime - Date.now());
+                const mn = Math.floor(rm/60000), sc = Math.floor((rm % 60000) / 1000);
+                document.getElementById('autoSendCountdown').textContent = '下次: ' + String(mn).padStart(2, '0') + ':' + String(sc).padStart(2, '0');
+                document.getElementById('autoSendCount').textContent = '已发: ' + autoSendCount + '次';
+            };
+            tick(); countdownTimer = setInterval(tick, 1000);
+        }
+
+        async function doAutoSend() {
+            if (!isAutoSending) return;
+            // 实时同步发报时间和观测时间为当前北京时间（精确到秒校准）
+            updateFormTime();
+            const beijingTime = getBeijingTimeStr();
+            document.getElementById('serial_no').value = autoSerialNo;
+            const data = getFormData();
+            autoSerialNo = autoSerialNo + 1 > 65535 ? 1 : autoSerialNo + 1;
+            addLog('[自动] 北京时间 ' + beijingTime + ' 触发发送（第' + (autoSendCount + 1) + '次）...', 'info');
+            try {
+                const r = await fetch('/api/upload', {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+                });
+                const j = await r.json();
+                if (j.success) {
+                    document.getElementById('hexDisplay').textContent = j.message_hex.match(/.{1,2}/g).join(' ');
+                    document.getElementById('hexInfo').textContent = '长度: ' + j.message_length + 'B | 发报: ' + j.report_time + ' | 观测: ' + j.obs_time + ' | CRC: ' + (j.decoded.crc_valid ? '\u2713' : '\u2717') + ' | 测站: ' + j.station_addr;
+                    displayElementsUsed(j.elements_used);
+                    if (j.stations_sent) {
+                        j.stations_sent.forEach(stn => {
+                            stn.targets_sent.forEach(ts => {
+                                ts.send_results.forEach(s => {
+                                    if (s.status === 'success') addLog('[自动#' + (autoSendCount + 1) + '] [' + stn.station_addr + '] ' + ts.transport.toUpperCase() + ' ' + ts.target_ip + ':' + ts.port + ' \u2713 (流水号:' + s.serial_no + ')', 'success');
+                                    else addLog('[自动#' + (autoSendCount + 1) + '] [' + stn.station_addr + '] ' + ts.target_ip + ' 失败: ' + s.error, 'error');
+                                });
+                            });
+                        });
+                    }
+                    autoSendCount++;
+                    document.getElementById('autoSendCount').textContent = '已发: ' + autoSendCount + '次';
+                } else { addLog('[自动] 失败: ' + j.error, 'error'); }
+            } catch (e) { addLog('[自动] 请求失败: ' + e.message, 'error'); }
+            // 发送完成后，重新校准并安排下一次发送（使用setTimeout链避免累积漂移）
+            scheduleNextAutoSend();
+        }
+
+        // ===== 手动发送 =====
+        async function sendData() {
+            if (isAutoSending) return;
+            const btn = document.getElementById('btnSend');
+            btn.disabled = true; btn.textContent = '\u23F3 发送中...';
+            const d = getFormData();
+            d.count = parseInt(document.getElementById('count').value) || 1;
+            if (d.station_addrs.length === 0) { addLog('请至少启用一个测站地址', 'warn'); btn.disabled = false; btn.textContent = '\u{1F4E4} 发送报文'; return; }
+            const staStr = d.station_addrs.join(',');
+            const enCount = d.targets.length;
+            addLog('发送: ' + d.station_addrs.length + '站(' + staStr + ') -> ' + enCount + '路 (' + d.count + '次/站/路)', 'info');
+            d.targets.forEach(t => {
+                addLog('  \u2514 ' + t.transport.toUpperCase() + '://' + t.target + ':' + t.port, 'info');
+            });
+            try {
+                const r = await fetch('/api/upload', {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d)
+                });
+                const j = await r.json();
+                if (j.success) {
+                    document.getElementById('hexDisplay').textContent = j.message_hex.match(/.{1,2}/g).join(' ');
+                    document.getElementById('hexInfo').textContent = '长度: ' + j.message_length + 'B | 发报: ' + j.report_time + ' | 观测: ' + j.obs_time + ' | CRC: ' + (j.decoded.crc_valid?'\u2713':'\u2717') + ' | 测站: ' + j.station_addr;
+                    displayElementsUsed(j.elements_used);
+                    // 按测站分组显示结果
+                    if (j.stations_sent) {
+                        j.stations_sent.forEach(stn => {
+                            addLog('  测站 ' + stn.station_addr + ': (流水号:' + stn.serial_no + ')', 'info');
+                            stn.targets_sent.forEach(ts => {
+                                let o = 0, e = 0;
+                                ts.send_results.forEach(s => {
+                                    if (s.status === 'success') o++; else e++;
+                                });
+                                const pref = ts.transport.toUpperCase() + ' ' + ts.target_ip + ':' + ts.port;
+                                if (e === 0) addLog('    ' + pref + ' [' + o + '/' + o + '] \u2713', 'success');
+                                else addLog('    ' + pref + ' [' + o + '成, ' + e + '败]', 'warn');
+                                ts.send_results.forEach(s => {
+                                    if (s.status !== 'success') addLog('      \u2717 #' + s.index + ': ' + s.error, 'error');
+                                });
+                            });
+                        });
+                    }
+                    addLog('完成: ' + j.total_success + '/' + j.total_count + ' 条', 'success');
+                } else { addLog('发送失败: ' + j.error, 'error'); }
+            } catch(e) { addLog('请求失败: ' + e.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = '\u{1F4E4} 发送报文'; }
+        }
+
+        // ===== 快捷键 =====
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') sendData();
+            else if (e.ctrlKey && e.key === 'p') { e.preventDefault(); previewMessage(); }
+        });
+
+        // ===== 重置连接状态 =====
+        for (let i = 1; i <= 4; i++) {
+            ['transport' + i, 'target' + i, 'port' + i].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', resetConn);
+                    el.addEventListener('input', resetConn);
+                }
+            });
+        }
+        function resetConn() {
+            document.getElementById('connStatusIcon').textContent = '\u26AA';
+            document.getElementById('connStatusText').textContent = '未检测';
+            document.getElementById('connStatusText').style.color = '#3d5468';
+            document.getElementById('connStatusDetail').textContent = '';
+        }
+
+        // ===== 静态表单自动保存 =====
+        function bindStaticSave() {
+            ['center_addr', 'password', 'station_type', 'serial_no', 'voltage', 'count'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', scheduleSave);
+                    if (el.tagName === 'INPUT') el.addEventListener('input', scheduleSave);
+                }
+            });
+            for (let i = 1; i <= 4; i++) {
+                ['tgtEn' + i, 'transport' + i, 'target' + i, 'port' + i].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('change', scheduleSave);
+                        if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                            el.addEventListener('input', scheduleSave);
+                        }
+                    }
+                });
+            }
+        }
+        bindStaticSave();
+
+        // ===== 页面加载时恢复配置 =====
+        restoreConfig();
+    </script>
+</body>
+</html>
